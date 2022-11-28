@@ -1,0 +1,6 @@
+[PID 12711] Initialize new branch @ localhost:45561: id - 2, balance - 400 
+[PID 12718] Initialize new branch @ localhost:47601: id - 3, balance - 400 
+[PID 12707] Initialize new branch @ localhost:35763: id - 1, balance - 400 
+[PID 12731] {'id': 1, 'recv': [{'interface': 'query', 'result': 'success', 'money': '500'}]}
+[PID 12748] {'id': 3, 'recv': [{'interface': 'withdraw', 'result': 'success'}, {'interface': 'query', 'result': 'success', 'money': '500'}]}
+[PID 12738] {'id': 2, 'recv': [{'interface': 'deposit', 'result': 'success'}, {'interface': 'query', 'result': 'success', 'money': '500'}]}

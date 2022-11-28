@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package proj1;
+
+service BankSystem {
+  rpc MsgDelivery (MsgDeliveryRequest) returns (MsgDeliveryReply) {}
+}
+
+message MsgDeliveryRequest {
+  int64 id = 1;
+  string interface = 2;
+  int64 money = 3;
+}
+
+message MsgDeliveryReply {
+  string interface = 1;
+  string result = 2;
+  int64 money = 3;
+}
