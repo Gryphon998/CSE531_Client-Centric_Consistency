@@ -1,3 +1,4 @@
+from datetime import datetime
 from time import sleep
 
 import grpc
@@ -33,10 +34,11 @@ class Customer:
             dest = event["dest"]
             interface = event["interface"]
             money = str(event.get("money", "0"))
+            print(datetime.now(), "Client", self.id, "send:", interface, self.writeSet)
             reply = self.stub_map[dest].MsgDelivery(bank_pb2.MsgDeliveryRequest(
                 interface=interface, money=money, writeSet=self.writeSet))
 
-            # print(interface)
+            print(datetime.now(), "Client", self.id, "receive:", reply.interface, reply.result)
             while reply.result == "failed":
                 sleep(0.3)
                 print(interface + "retry")

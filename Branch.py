@@ -1,4 +1,7 @@
-from time import sleep
+import time
+from datetime import datetime, timedelta
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import grpc
 
@@ -27,37 +30,47 @@ class Branch(bank_pb2_grpc.BankSystemServicer):
 
     # TODO: students are expected to process requests from both Client and Branch
     def MsgDelivery(self, request, context):
+        print(datetime.now(), "Branch", self.id, "receive:", request.interface)
+        sched = BackgroundScheduler()
         self.recvMsg.append("recv")
         if request.interface == "query":
             if self.checkWriteSet(request.writeSet):
                 return bank_pb2.MsgDeliveryReply(
                     interface="query", result="success", money=str(self.balance))
+            else:
+                return bank_pb2.MsgDeliveryReply(interface="query", result="failed", money="null")
 
-            return bank_pb2.MsgDeliveryReply(interface="query", result="failed", money="null")
         elif request.interface == "deposit":
             if self.checkWriteSet(request.writeSet):
                 self.writeSet.append(self.writeSet[-1] + 1)
-                return bank_pb2.MsgDeliveryReply(
-                    interface="deposit", result="success", money=str(self.deposit(int(request.money), self.writeSet, True)))
 
-            return bank_pb2.MsgDeliveryReply(interface="deposit", result="failed", money="null")
+                sched.add_job(lambda: self.propagate("propagate_deposit", request.money), 'date', run_date=datetime.today() + timedelta(seconds=1))
+                # sched.add_job(self.test, 'date', run_date=datetime.today() + timedelta(seconds=1))
+                sched.start()
+
+                return bank_pb2.MsgDeliveryReply(
+                    interface="deposit", result="success", money=str(self.deposit(int(request.money))))
+            else:
+                return bank_pb2.MsgDeliveryReply(interface="deposit", result="failed", money="null")
+
         elif request.interface == "withdraw":
-            # print(str(self.id) + "withdraw")
             if self.checkWriteSet(request.writeSet):
                 self.writeSet.append(self.writeSet[-1] + 1)
-                return bank_pb2.MsgDeliveryReply(
-                    interface="withdraw", result="success", money=str(self.withdraw(int(request.money), self.writeSet, True)))
 
-            return bank_pb2.MsgDeliveryReply(interface="withdraw", result="failed", money="null")
-        elif request.interface == "propogate_deposit":
-            # print(str(self.id) + "propogate_deposit")
+                return bank_pb2.MsgDeliveryReply(
+                    interface="withdraw", result="success", money=str(self.withdraw(int(request.money))))
+            else:
+                return bank_pb2.MsgDeliveryReply(interface="withdraw", result="failed", money="null")
+
+        elif request.interface == "propagate_deposit":
             self.writeSet = request.writeSet
             return bank_pb2.MsgDeliveryReply(
-                interface="deposit", result="success", money=str(self.deposit(int(request.money), self.writeSet, False)))
-        elif request.interface == "propogate_withdraw":
+                interface="deposit", result="success", money=str(self.deposit(int(request.money))))
+
+        elif request.interface == "propagate_withdraw":
             self.writeSet = request.writeSet
             return bank_pb2.MsgDeliveryReply(
-                interface="withdraw", result="success", money=str(self.withdraw(int(request.money), self.writeSet, False)))
+                interface="withdraw", result="success", money=str(self.withdraw(int(request.money))))
 
     def checkWriteSet(self, writeSet):
         if writeSet == self.writeSet:
@@ -65,27 +78,22 @@ class Branch(bank_pb2_grpc.BankSystemServicer):
 
         return False
 
-    def deposit(self, money, writeSet, propogate):
+    def deposit(self, money):
         self.balance += money
-
-        if propogate:
-            sleep(5)
-            for stub in self.stubList:
-                stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(
-                    interface="propogate_deposit", money=str(money), writeSet=writeSet))
-
         return self.balance
 
-    def withdraw(self, money, writeSet, propogate):
+    def withdraw(self, money):
         self.balance -= money
-
-        if propogate:
-            sleep(5)
-            for stub in self.stubList:
-                stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(
-                    interface="propogate_withdraw", money=str(money), writeSet=writeSet))
-
         return self.balance
 
     def add_stub(self, address):
         self.stubList.append(bank_pb2_grpc.BankSystemStub(grpc.insecure_channel(address)))
+
+    def propagate(self, interface, money):
+        print(datetime.now(), "Branch", self.id, interface)
+        for stub in self.stubList:
+            stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(
+                interface=interface, money=money, writeSet=self.writeSet))
+
+    def test(self):
+        print("!!!")
