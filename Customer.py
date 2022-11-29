@@ -1,3 +1,5 @@
+from time import sleep
+
 import grpc
 
 import bank_pb2
@@ -6,7 +8,7 @@ from google.protobuf.json_format import MessageToDict
 
 
 class Customer:
-    def __init__(self, id, events, address):
+    def __init__(self, id, events, address_map):
         # unique ID of the Customer
         self.id = id
         # events from the input
@@ -14,22 +16,38 @@ class Customer:
         # a list of received messages used for debugging purpose
         self.recvMsg = list()
         # pointer for the stub
-        self.stub = self.createStub(address)
+        self.stub_map = self.createStubMap(address_map)
+        #write set
+        self.writeSet = [0]
 
     # TODO: students are expected to create the Customer stub
-    def createStub(self, address):
-        return bank_pb2_grpc.BankSystemStub(grpc.insecure_channel(address))
+    def createStubMap(self, address_map):
+        stub_map = {}
+        for key in address_map:
+            stub_map[key] = bank_pb2_grpc.BankSystemStub(grpc.insecure_channel(address_map.get(key)))
+        return stub_map
 
     # TODO: students are expected to send out the events to the Bank
     def executeEvents(self):
         for event in self.events:
-            id = event["id"]
+            dest = event["dest"]
             interface = event["interface"]
-            money = event["money"]
-            msg = MessageToDict(self.stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(id=id, interface=interface, money=money)))
+            money = str(event.get("money", "0"))
+            reply = self.stub_map[dest].MsgDelivery(bank_pb2.MsgDeliveryRequest(
+                interface=interface, money=money, writeSet=self.writeSet))
 
-            if interface == "deposit" or interface == "withdraw":
-                del msg['money']
+            # print(interface)
+            while reply.result == "failed":
+                sleep(0.3)
+                print(interface + "retry")
+                reply = self.stub_map[dest].MsgDelivery(bank_pb2.MsgDeliveryRequest(
+                    interface=interface, money=money, writeSet=self.writeSet))
+
+            self.writeSet.append(self.writeSet[-1] + 1)
+            msg = MessageToDict(reply)
+
+            # if interface == "deposit" or interface == "withdraw":
+            #     del msg['money']
 
             self.recvMsg.append(msg)
 

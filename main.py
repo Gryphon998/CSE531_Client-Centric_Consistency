@@ -67,7 +67,7 @@ def branches_init(processes):
 def customer_init(processes):
     for p in processes:
         if p["type"] == "customer":
-            new_customer = Customer(p["id"], p["events"], address_map.get(p["id"]))
+            new_customer = Customer(p["id"], p["events"], address_map)
             worker = multiprocessing.Process(target=_run_client,
                                              args=(new_customer,))
             worker.start()
@@ -75,7 +75,8 @@ def customer_init(processes):
 
 
 if __name__ == '__main__':
-    handler = logging.FileHandler('output.log', 'w+')
+    # handler = logging.FileHandler('output.log', 'w+')
+    handler = logging.StreamHandler()
     formatter = logging.Formatter('[PID %(process)d] %(message)s')
     handler.setFormatter(formatter)
     _LOGGER.addHandler(handler)

@@ -21,7 +21,7 @@ class Branch(bank_pb2_grpc.BankSystemServicer):
         self.stubList = list()
         # a list of received messages used for debugging purpose
         self.recvMsg = list()
-        # iterate the processID of the branches
+        self.writeSet = [0]
         # TODO: students are expected to store the processID of the branches
         pass
 
@@ -29,39 +29,61 @@ class Branch(bank_pb2_grpc.BankSystemServicer):
     def MsgDelivery(self, request, context):
         self.recvMsg.append("recv")
         if request.interface == "query":
-            sleep(3)
-            return bank_pb2.MsgDeliveryReply(
-                interface="query", result="success", money=self.balance)
-        elif request.interface == "deposit":
-            return bank_pb2.MsgDeliveryReply(
-                interface="deposit", result="success", money=self.deposit(request.money, True))
-        elif request.interface == "withdraw":
-            return bank_pb2.MsgDeliveryReply(
-                interface="withdraw", result="success", money=self.withdraw(request.money, True))
-        elif request.interface == "propogate_deposit":
-            return bank_pb2.MsgDeliveryReply(
-                interface="deposit", result="success", money=self.deposit(request.money, False))
-        elif request.interface == "propogate_withdraw":
-            return bank_pb2.MsgDeliveryReply(
-                interface="withdraw", result="success", money=self.withdraw(request.money, False))
+            if self.checkWriteSet(request.writeSet):
+                return bank_pb2.MsgDeliveryReply(
+                    interface="query", result="success", money=str(self.balance))
 
-    def deposit(self, money, propogate):
+            return bank_pb2.MsgDeliveryReply(interface="query", result="failed", money="null")
+        elif request.interface == "deposit":
+            if self.checkWriteSet(request.writeSet):
+                self.writeSet.append(self.writeSet[-1] + 1)
+                return bank_pb2.MsgDeliveryReply(
+                    interface="deposit", result="success", money=str(self.deposit(int(request.money), self.writeSet, True)))
+
+            return bank_pb2.MsgDeliveryReply(interface="deposit", result="failed", money="null")
+        elif request.interface == "withdraw":
+            # print(str(self.id) + "withdraw")
+            if self.checkWriteSet(request.writeSet):
+                self.writeSet.append(self.writeSet[-1] + 1)
+                return bank_pb2.MsgDeliveryReply(
+                    interface="withdraw", result="success", money=str(self.withdraw(int(request.money), self.writeSet, True)))
+
+            return bank_pb2.MsgDeliveryReply(interface="withdraw", result="failed", money="null")
+        elif request.interface == "propogate_deposit":
+            # print(str(self.id) + "propogate_deposit")
+            self.writeSet = request.writeSet
+            return bank_pb2.MsgDeliveryReply(
+                interface="deposit", result="success", money=str(self.deposit(int(request.money), self.writeSet, False)))
+        elif request.interface == "propogate_withdraw":
+            self.writeSet = request.writeSet
+            return bank_pb2.MsgDeliveryReply(
+                interface="withdraw", result="success", money=str(self.withdraw(int(request.money), self.writeSet, False)))
+
+    def checkWriteSet(self, writeSet):
+        if writeSet == self.writeSet:
+            return True
+
+        return False
+
+    def deposit(self, money, writeSet, propogate):
         self.balance += money
 
         if propogate:
+            sleep(5)
             for stub in self.stubList:
                 stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(
-                    id=self.id, interface="propogate_deposit", money=money))
+                    interface="propogate_deposit", money=str(money), writeSet=writeSet))
 
         return self.balance
 
-    def withdraw(self, money, propogate):
+    def withdraw(self, money, writeSet, propogate):
         self.balance -= money
 
         if propogate:
+            sleep(5)
             for stub in self.stubList:
                 stub.MsgDelivery(bank_pb2.MsgDeliveryRequest(
-                    id=self.id, interface="propogate_withdraw", money=money))
+                    interface="propogate_withdraw", money=str(money), writeSet=writeSet))
 
         return self.balance
 
