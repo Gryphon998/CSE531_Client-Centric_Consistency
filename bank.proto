@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proj3;
+package client_centric_consistency;
 
 service BankSystem {
   rpc MsgDelivery (MsgDeliveryRequest) returns (MsgDeliveryReply) {}

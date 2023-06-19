@@ -15,7 +15,7 @@ class BankSystemStub(object):
             channel: A grpc.Channel.
         """
         self.MsgDelivery = channel.unary_unary(
-                '/proj3.BankSystem/MsgDelivery',
+                '/client_centric_consistency.BankSystem/MsgDelivery',
                 request_serializer=bank__pb2.MsgDeliveryRequest.SerializeToString,
                 response_deserializer=bank__pb2.MsgDeliveryReply.FromString,
                 )
@@ -40,7 +40,7 @@ def add_BankSystemServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'proj3.BankSystem', rpc_method_handlers)
+            'client_centric_consistency.BankSystem', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -59,7 +59,7 @@ class BankSystem(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/proj3.BankSystem/MsgDelivery',
+        return grpc.experimental.unary_unary(request, target, '/client_centric_consistency.BankSystem/MsgDelivery',
             bank__pb2.MsgDeliveryRequest.SerializeToString,
             bank__pb2.MsgDeliveryReply.FromString,
             options, channel_credentials,
